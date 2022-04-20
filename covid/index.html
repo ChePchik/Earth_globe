@@ -1,0 +1,56 @@
+<head>
+	<style>
+		body {
+			margin: 0;
+		}
+	</style>
+
+	<script src="//unpkg.com/d3"></script>
+	<script src="//unpkg.com/d3-dsv"></script>
+
+	<script src="//unpkg.com/globe.gl"></script>
+</head>
+
+<body>
+	<div id="globeViz"></div>
+
+	<script>
+		const weightColor = d3.scaleSequentialSqrt(d3.interpolateYlOrRd).domain([0, 1e7]);
+
+		const world = Globe()(document.getElementById('globeViz'))
+			.globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+			.bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+			.backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+			.hexBinPointWeight('pop')
+			.hexAltitude((d) => d.sumWeight * 6e-8)
+			.hexBinResolution(4)
+			.hexTopColor((d) => weightColor(d.sumWeight))
+			.hexSideColor((d) => weightColor(d.sumWeight))
+			.hexBinMerge(true)
+			.enablePointerInteraction(false); // performance improvement
+
+		let covid = [];
+		let response = fetch('https://covid19.mathdro.id/api/confirmed')
+			.then((response) => response.json())
+			.then((data) => {
+				// console.log(data);
+				for (const key in data) {
+					// console.log(data[key].countryRegion);
+					covid.push({
+						reg: data[key].countryRegion,
+						lat: data[key].lat,
+						lng: data[key].long,
+						pop: data[key].confirmed,
+					});
+				}
+			})
+			.then(() => {
+				console.log(covid);
+				world.hexBinPointsData(covid);
+			});
+
+		// Add auto-rotation
+		world.controls().autoRotate = true;
+		world.controls().autoRotateSpeed = 0.6;
+	</script>
+</body>
