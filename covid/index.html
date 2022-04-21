@@ -7,7 +7,7 @@
 
 	<script src="//unpkg.com/d3"></script>
 	<script src="//unpkg.com/d3-dsv"></script>
-
+	<script src="//unpkg.com/three"></script>
 	<script src="//unpkg.com/globe.gl"></script>
 </head>
 
@@ -18,15 +18,25 @@
 		const weightColor = d3.scaleSequentialSqrt(d3.interpolateYlOrRd).domain([0, 1e7]);
 
 		const world = Globe()(document.getElementById('globeViz'))
-			.globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+			.globeImageUrl('earthmap_10k.jpg')
+			// Getter/setter для URL-адреса изображения, используемого в материале, обертывающем земной шар.  Если изображение не предоставлено, земной шар представлен в виде черной сферы.
 			.bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+			// Getter/setter для URL-адреса изображения, используемого для создания карты рельефа в материале, чтобы представить ландшафт земного шара.
 			.backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+			// Getter/setter для URL-адреса изображения, которое будет использоваться в качестве фона для земного шара.  Если изображение не предоставлено, вместо него отображается цвет фона.
 			.hexBinPointWeight('pop')
+			// Функция доступа объекта Point, атрибут или числовая константа для веса точки.  Веса точек в одном бине суммируются и определяют высоту шестиугольника по умолчанию.
 			.hexAltitude((d) => d.sumWeight * 6e-8)
+			// Высота каждого шестиугольника в единицах радиуса земного шара (0 = 0 высота (плоский шестиугольник), 1 = радиус земного шара).  Это свойство также поддерживает использование метода доступа на основе агрегированных данных шестиугольника, следующего синтаксису: hexAltitude(({ points, sumWeight, center: {lat, lng }}) => ...).  Этот метод должен возвращать числовую константу.
 			.hexBinResolution(4)
+			// Разрешение географического бинирования, как определено H3.  Определяет площадь шестиугольников, которые замощают поверхность земного шара.  Принимает значения от 0 до 15. Уровень 0 разделяет землю на 122 (в основном) шестиугольных ячеек.  Каждый последующий уровень делит предыдущий примерно на 7 шестиугольников.
 			.hexTopColor((d) => weightColor(d.sumWeight))
+			// Метод доступа для верхнего цвета каждого шестиугольника.  Метод должен следовать сигнатуре: hexTopColor(({ points, sumWeight, center: {lat, lng }}) => ...) и возвращать строку цвета.
 			.hexSideColor((d) => weightColor(d.sumWeight))
+			// Метод доступа для цвета стороны каждого шестиугольника.  Метод должен следовать сигнатуре: hexSideColor(({ points, sumWeight, center: {lat, lng }}) => ...) и возвращать строку цвета.
 			.hexBinMerge(true)
+			// .labelText('name')
+
 			.enablePointerInteraction(false); // performance improvement
 
 		let covid = [];
@@ -47,10 +57,24 @@
 			.then(() => {
 				console.log(covid);
 				world.hexBinPointsData(covid);
+				// .labelsData(covid);
 			});
 
 		// Add auto-rotation
 		world.controls().autoRotate = true;
 		world.controls().autoRotateSpeed = 0.6;
+
+		new THREE.TextureLoader().load('clouds.png', (cloudsTexture) => {
+			const clouds = new THREE.Mesh(
+				new THREE.SphereBufferGeometry(world.getGlobeRadius() * (1 + 0.004), 75, 75),
+				new THREE.MeshPhongMaterial({ map: cloudsTexture, transparent: true }),
+			);
+			world.scene().add(clouds);
+
+			(function rotateClouds() {
+				clouds.rotation.y += (-0.006 * Math.PI) / 180;
+				requestAnimationFrame(rotateClouds);
+			})();
+		});
 	</script>
 </body>
